@@ -2,6 +2,9 @@
 bj.py
 
 Controls the blackjack program
+
+This is not designed to be fast. If you want fast then
+use a compiled language.
 '''
 import sys
 import abc
