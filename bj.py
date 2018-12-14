@@ -5,93 +5,105 @@ Controls the blackjack program
 '''
 import sys
 import abc
-
-NEVER = sys.float_info.max
-ALWYS = sys.float_info.min
+from math import floor
 
 class IPlayer(abc.ABC):
   @abc.abstractclassmethod
-  def want_insurance(self, hand, dealer):
+  def accepts_insurance(self, hand : str, upcard : str) -> bool:
     pass
   @abc.abstractclassmethod
-  def want_surrender(self, hand, dealer):
+  def accepts_surrender(self, hand : str, upcard : str) -> bool:
     pass
   @abc.abstractclassmethod
-  def want_split(self, hand, dealer):
+  def accepts_split(self, hand : str, upcard : str) -> bool:
     pass
   @abc.abstractclassmethod
-  def want_double(self, hand, dealer):
+  def accepts_double(self, hand : str, upcard : str) -> bool:
     pass
   @abc.abstractclassmethod
-  def want_stand(self, hand, dealer):
+  def accepts_stand(self, hand : str, upcard : str) -> bool:
+    pass
+  @abc.abstractclassmethod
+  def show_card(self, card : str) -> None:
+    pass
+  @abc.abstractclassmethod
+  def set_decks_in_shoe(self, decks_in_shoe : int) -> None:
+    pass
+  @abc.abstractclassmethod
+  def get_wager(self) -> float:
+    pass
+  @abc.abstractclassmethod
+  def receive_payoff(self, amount) -> None:
+    pass
+  @abc.abstractclassmethod
+  def set_minimum_bet(self, amount:float) -> None:
+    pass
+  @abc.abstractclassmethod
+  def set_maximum_bet(self, amount:float) -> None:
     pass
 
-class InvalidFace(Exception):
-  pass
-
-class Hand:
-  'A hand in blackjack does not care about the suits of the cards'
-
-  chars = '23456789XJQKA'
-  # faces   0   1   2   3   4   5   6   7   8   9  10  11  12
-  # chars   2   3   4   5   6   7   8   9   X   J   Q   K   A
-  values = [2,  3,  4,  5,  6,  7,  8,  9, 10, 10, 10, 10,  1]
-
-  def __init__(self):
-    self.has_aces = False
-    self.faces = []
-    self.total = 0
-
-  def is_blackjack(self):
-    'return True if this hand is a blackjack'
-    return self.has_aces and len(self.faces) == 2 and self.total == 11
-
-  def is_pair_of_8s(self):
-    return len(self.faces) == 2 and self.faces[0] == 6 and self.faces[1] == 6
-
-  def add(self, i): 
-    'add a card using it\'s face index'
-    if i < 0 or i >= len(Hand.values):
-      raise InvalidFace
-    if i == 12:
-      self.has_aces = True
-    self.total += Hand.values[i]
-    self.faces.append(i)
-    self.repr = self.__repr__()
-
-  def value(self):
-    'return the value of the hand'
-    if self.is_soft():
-      return self.total + 10
-    else:
-      return self.total
-
-  def __repr__(self):
-    temp = self.faces[:]
-    temp.sort()
-    ans = ''
-    for i in temp:
-      ans += Hand.chars[i]
-    return ans + ": " + str(self.value())
-
-  def addFace(self, face):
-    self.add(Hand.chars.index(face))
-
-  def is_soft(self):
-    return self.has_aces and self.total <= 11
-
-  def has_ace(self):
-    return self.total == 1
-
-  @staticmethod
-  def create(hand):
-    ans = Hand()
-    for card in hand:
-      ans.addFace(card)
-    return ans
-
+NEVER = sys.float_info.max
+ALWYS = sys.float_info.min
+CARDS_PER_DECK = 52.0
 
 class Counter(IPlayer):
+
+  def __init__(self):
+    self._true_count = 0.0
+    self._true_adjust = -0.5
+    self._count = 0.0
+    self._decks_in_shoe = 0.0
+    self._number_cards_seen = 0.0
+    self._unit = 0.0
+    self._bankrole = 0.0
+    self._minimum_bet = 0.0
+    self._maximum_bet = 0.0
+
+  def set_minimum_bet(self, amount:float) -> None:
+    self._minimum_bet = amount
+  def set_maximum_bet(self, amount:float) -> None:
+    self._maximum_bet = amount
+  def receive_payoff(self, amount : float) -> None:
+    self._bankrole += amount
+  def get_wager(self) -> float:
+    scale = self._true_count + self._true_adjust
+    wager = self._unit * floor(scale + 0.5)
+    if wager < self._minimum_bet:
+      wager = self._minimum_bet
+    elif wager > self._maximum_bet:
+      wager = self._maximum_bet
+    self._bankrole -= wager
+    return wager
+  def accepts_insurance(self, hand : str, upcard : str) -> bool:
+    return Counter._want_insurance(self._true_count, Counter.handsort(hand), upcard)
+  def accepts_surrender(self, hand : str, upcard : str) -> bool:
+    return Counter._want_surrender(self._true_count, Counter.handsort(hand), upcard)
+  def accepts_split(self, hand : str, upcard : str) -> bool:
+    return Counter._want_split(self._true_count, Counter.handsort(hand), upcard)
+  def accepts_double(self, hand : str, upcard : str) -> bool:
+    return Counter._want_double(self._true_count, Counter.handsort(hand), upcard)
+  def accepts_stand(self, hand : str, upcard : str) -> bool:
+    return Counter._want_stand(self._true_count, Counter.handsort(hand), upcard)
+  def show_card(self, card : str) -> None:
+    'The player sees a card that has been dealt to the table'
+    self._number_cards_seen += 1.0
+    self._count += Counter.count_table[card]
+    self._set_true_count()
+  def set_decks_in_shoe(self, decks_in_shoe : int) -> None:
+    self._decks_in_shoe = float(decks_in_shoe)
+  def _set_true_count(self) -> None:
+    'set self.value to the current value'
+    number_cards = CARDS_PER_DECK * self._decks_in_shoe
+    number_cards_unseen = number_cards - self._number_cards_seen
+    number_decks_unseen = number_cards_unseen / CARDS_PER_DECK
+    self._true_count = self._count / number_decks_unseen
+
+  count_table = {
+    '2' : 1, '3' : 1, '4' : 1, '5' : 1, '6' : 1,
+    '7' : 0, '8' : 0, '9' : 0,
+    'X' : -1, 'A' : -1
+  }
+
   hard_stand_table = {
     #            2      3      4      5      6      7      8      9      X      A
       12 : [  +3.0,  +1.5,   0.0,  -1.5,  -1.0, NEVER, NEVER, NEVER, NEVER, NEVER],
@@ -308,9 +320,6 @@ class Counter(IPlayer):
     'XX' : +3.0,    'XA' : +3.0,    'AA' : +3.0,
   }
 
-  def __init__(self):
-    self.true_count = 0.0
-
   upcard_index = {
     '2' : 0, '3' : 1, '4' : 2, '5' : 3, '6' : 4, '7' : 5, '8' : 6, '9' : 7,
     'X' : 8, 'A' : 9
@@ -348,29 +357,30 @@ class Counter(IPlayer):
 
   @staticmethod
   def handsort(hand:str) -> str:
+    'sort a hand so that the low cards come first'
     fs = list(hand)
     fs.sort(key=Counter.get_index)
     return ''.join(fs)
   
   @staticmethod
-  def want_insurance(true_count, hand, upcard) -> bool:
+  def _want_insurance(true_count, hand, upcard) -> bool:
     threshold = Counter.insurance_table[hand]
     return true_count >= threshold
 
   @staticmethod
-  def want_surrender(true_count, hand, upcard):
-    return Counter.want_something(Counter.surrender_table, true_count, hand, upcard)
+  def _want_surrender(true_count, hand, upcard):
+    return Counter._want(Counter.surrender_table, true_count, hand, upcard)
 
   @staticmethod
-  def want_split(true_count, hand, upcard):
-    return Counter.want_something(Counter.split_table, true_count, hand, upcard)
+  def _want_split(true_count, hand, upcard):
+    return Counter._want(Counter.split_table, true_count, hand, upcard)
 
   @staticmethod
-  def want_double(true_count, hand, upcard):
-    return Counter.want_something(Counter.double_table, true_count, hand, upcard)
+  def _want_double(true_count, hand, upcard):
+    return Counter._want(Counter.double_table, true_count, hand, upcard)
 
   @staticmethod
-  def want_stand(true_count, hand, upcard):
+  def _want_stand(true_count, hand, upcard):
     value, soft = Counter.get_value(hand)
     if soft:
       table = Counter.soft_stand_table
@@ -384,12 +394,23 @@ class Counter(IPlayer):
         return False
 
   @staticmethod
-  def want_something(table, true_count, hand, upcard):
+  def _want(table, true_count, hand, upcard):
     index = Counter.upcard_index[upcard]
     threshold = table[hand][index]
     return true_count >= threshold
 
 if __name__ == '__main__':
-  def test(hand, upcard, true_count):
-    print(Counter.want_stand(true_count, hand, upcard))
-  test('X6', 'X', -1.0)
+  player = Counter()
+  player.set_decks_in_shoe(6)
+  card1 = 'X'
+  card2 = '6'
+  upcard = 'A'
+  player.show_card(card1)
+  player.show_card(card2)
+  hand = card1 + card2
+  player.show_card(upcard)
+  if player.accepts_insurance(hand, upcard):
+    print("accept insurance")
+  else:
+    print("decline insurance")
+  
