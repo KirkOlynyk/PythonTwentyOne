@@ -9,6 +9,7 @@ use a compiled language.
 import sys
 import abc
 from math import floor
+import random
 
 class IPlayer(abc.ABC):
   @abc.abstractclassmethod
@@ -402,7 +403,20 @@ class Counter(IPlayer):
     threshold = table[hand][index]
     return true_count >= threshold
 
-if __name__ == '__main__':
+def test1():
+  #       23456789XJQKA
+  suit = '23456789XXXXA'
+  deck = suit + suit + suit + suit
+  decks = deck + deck + deck + deck + deck + deck
+  shoe = list(decks)
+  # show that the total count of the shoe is zero
+  if sum([Counter.count_table[x] for x in shoe]) != 0:
+    raise ValueError
+  random.seed(a=23)     # set the seed for the random number generator
+  random.shuffle(shoe)
+  print(''.join(shoe[:32]))
+
+def test0():
   player = Counter()
   player.set_decks_in_shoe(6)
   card1 = 'X'
@@ -416,4 +430,6 @@ if __name__ == '__main__':
     print("accept insurance")
   else:
     print("decline insurance")
-  
+
+if __name__ == '__main__':
+  test1()
