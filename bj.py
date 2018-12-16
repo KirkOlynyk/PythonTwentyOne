@@ -403,6 +403,67 @@ class Counter(IPlayer):
     threshold = table[hand][index]
     return true_count >= threshold
 
+class Dealer:
+  def __init__(self, decks_in_shoe=6, decks_cut=1.5, seed=0):
+    self._decks_in_shoe = decks_in_shoe
+    self._decks_cut = decks_cut
+    self._seed = 0
+
+  def decks_in_shoe(self) -> float:
+    return float(self._decks_in_shoe)
+
+  def shuffle(self) -> None:
+    self._shoe = Dealer.get_shoe(self._decks_in_shoe)
+    random.seed(a=self._seed)
+    random.shuffle(self._shoe)
+
+  def burn_card(self) -> None:
+    _ = self._shoe.pop(0)
+
+  def deal_card(self) -> str:
+    return self._shoe.pop(0)
+
+  @staticmethod
+  def get_shoe(decks_in_shoe):
+    suit = '23456789XXXXA'
+    return list(suit * decks_in_shoe)
+
+def test2():
+  dealer = Dealer()
+  player = Counter()
+  player.set_decks_in_shoe(dealer.decks_in_shoe())
+  dealer.shuffle()
+  dealer.burn_card()
+  
+  card1 = dealer.deal_card()
+  player.show_card(card1)
+  
+  hole_card = dealer.deal_card()
+  
+  card2 = dealer.deal_card()
+  player.show_card(card2)
+
+  up_card = dealer.deal_card()
+  player.show_card(up_card)
+
+  dealer_hand = ''.join([hole_card, up_card])
+  
+  hand = ''.join([card1, card2])
+  print('up_card:', up_card)
+  print('hand:', hand)
+  if up_card == 'A':
+    if player.accepts_insurance(hand, up_card):
+      print('player accepts insurance')
+      # collect insurance
+    else:
+      print('player declines insurance')
+
+  if up_card == 'X' or up_card == 'A':
+    if Counter.is_blackjack(dealer_hand):
+      print("dealer has a blackjack")
+    else:
+      print("dealer does not have a blacjack")
+
 def test1():
   #       23456789XJQKA
   suit = '23456789XXXXA'
@@ -432,4 +493,4 @@ def test0():
     print("decline insurance")
 
 if __name__ == '__main__':
-  test1()
+  test2()
