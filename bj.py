@@ -11,8 +11,33 @@ import abc
 from math import floor
 import random
 
+CARD_VALUE_DICT = {
+  '2' : 2, '3' : 3, '4' : 4, '5' : 5, '6' : 6, '7' : 7, '8' : 8, '9' : 9,
+  'X' : 10, 'A' : 1 
+}
+
+def is_bust(hand:str) -> bool:
+  total, _ = get_hand_value(hand)
+  return total > 21
+
+def get_hand_value(hand:str):
+  total = 0
+  has_aces = False
+  for face in hand:
+    card_value = CARD_VALUE_DICT[face]
+    if card_value == 1:
+      has_aces = True
+    total += card_value
+  if total <= 11 and has_aces:
+    return total + 10, True
+  else:
+    return total, False
+
 def is_blackjack(hand:str) -> bool:
   return hand == 'AX' or  hand == 'XA'
+
+def hand_can_be_split(hand:str) -> bool:
+  return len(hand) == 2 and hand[0] == hand[1]
 
 class IPlayer(abc.ABC):
   @abc.abstractclassmethod
@@ -66,6 +91,8 @@ class Counter(IPlayer):
     self._minimum_bet = 0.0
     self._maximum_bet = 0.0
 
+  def set_unit(self, unit:float) -> None:
+    self._unit = unit
   def set_minimum_bet(self, amount:float) -> None:
     self._minimum_bet = amount
   def set_maximum_bet(self, amount:float) -> None:
@@ -427,10 +454,16 @@ class Dealer:
 def test2():
   dealer = Dealer()
   player = Counter()
+  player.set_minimum_bet(100.0)
+  player.set_maximum_bet(1000.0)
+  player.set_unit(100.0)
   player.set_decks_in_shoe(dealer.decks_in_shoe())
   dealer.shuffle()
   dealer.burn_card()
   
+  wager = player.get_wager()
+  print("player bets", wager)
+
   card1 = dealer.deal_card()
   player.show_card(card1)
   
@@ -459,6 +492,33 @@ def test2():
       print("dealer has a blackjack")
     else:
       print("dealer does not have a blacjack")
+
+  if hand_can_be_split(hand):
+    print("hand may be split")
+    if player.accepts_split(hand, up_card):
+      print("player accepts split")
+    else:
+      print("player declines split")
+  else:
+    print("hand cannot be split")
+
+  if player.accepts_double(hand, up_card):
+    print("player accepts double")
+  else:
+    print("player declines double")
+
+  while True:
+    print("player hits")
+    card = dealer.deal_card()
+    print(card, "is dealt")
+    player.show_card(card)
+    hand += card
+    if is_bust(hand) or player.accepts_stand(hand, up_card):
+      break
+  if is_bust(hand):
+    print("hand busts with", hand)
+  else:
+    print("player stands on", hand)
 
 def test1():
   #       23456789XJQKA
