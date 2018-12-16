@@ -11,6 +11,9 @@ import abc
 from math import floor
 import random
 
+def is_blackjack(hand:str) -> bool:
+  return hand == 'AX' or  hand == 'XA'
+
 class IPlayer(abc.ABC):
   @abc.abstractclassmethod
   def accepts_insurance(self, hand : str, upcard : str) -> bool:
@@ -349,13 +352,6 @@ class Counter(IPlayer):
       return total, False
 
   @staticmethod
-  def is_blackjack(hand : str) -> bool:
-    if len(hand) == 2:
-      return Counter.get_value(hand) == (21, True)
-    else:
-      return False
-
-  @staticmethod
   def get_index(face:str) -> int:
     return Counter.upcard_index[face]
 
@@ -459,7 +455,7 @@ def test2():
       print('player declines insurance')
 
   if up_card == 'X' or up_card == 'A':
-    if Counter.is_blackjack(dealer_hand):
+    if is_blackjack(dealer_hand):
       print("dealer has a blackjack")
     else:
       print("dealer does not have a blacjack")
