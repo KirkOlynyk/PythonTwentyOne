@@ -62,7 +62,7 @@ class IPlayer(abc.ABC):
   def set_decks_in_shoe(self, decks_in_shoe : int) -> None:
     pass
   @abc.abstractclassmethod
-  def get_wager(self) -> float:
+  def get_bet(self) -> float:
     pass
   @abc.abstractclassmethod
   def receive_payoff(self, amount) -> None:
@@ -99,7 +99,7 @@ class Counter(IPlayer):
     self._maximum_bet = amount
   def receive_payoff(self, amount : float) -> None:
     self._bankrole += amount
-  def get_wager(self) -> float:
+  def get_bet(self) -> float:
     scale = self._true_count + self._true_adjust
     wager = self._unit * floor(scale + 0.5)
     if wager < self._minimum_bet:
@@ -108,16 +108,16 @@ class Counter(IPlayer):
       wager = self._maximum_bet
     self._bankrole -= wager
     return wager
-  def accepts_insurance(self, hand : str, upcard : str) -> bool:
-    return Counter._want_insurance(self._true_count, Counter.handsort(hand), upcard)
-  def accepts_surrender(self, hand : str, upcard : str) -> bool:
-    return Counter._want_surrender(self._true_count, Counter.handsort(hand), upcard)
-  def accepts_split(self, hand : str, upcard : str) -> bool:
-    return Counter._want_split(self._true_count, Counter.handsort(hand), upcard)
-  def accepts_double(self, hand : str, upcard : str) -> bool:
-    return Counter._want_double(self._true_count, Counter.handsort(hand), upcard)
-  def accepts_stand(self, hand : str, upcard : str) -> bool:
-    return Counter._want_stand(self._true_count, Counter.handsort(hand), upcard)
+  def accepts_insurance(self, cards : str, upcard : str) -> bool:
+    return Counter._want_insurance(self._true_count, Counter.handsort(cards), upcard)
+  def accepts_surrender(self, cards : str, upcard : str) -> bool:
+    return Counter._want_surrender(self._true_count, Counter.handsort(cards), upcard)
+  def accepts_split(self, cards : str, upcard : str) -> bool:
+    return Counter._want_split(self._true_count, Counter.handsort(cards), upcard)
+  def accepts_double(self, cards : str, upcard : str) -> bool:
+    return Counter._want_double(self._true_count, Counter.handsort(cards), upcard)
+  def accepts_stand(self, cards : str, upcard : str) -> bool:
+    return Counter._want_stand(self._true_count, Counter.handsort(cards), upcard)
   def show_card(self, card : str) -> None:
     'The player sees a card that has been dealt to the table'
     self._number_cards_seen += 1.0
@@ -365,10 +365,10 @@ class Counter(IPlayer):
   }
 
   @staticmethod
-  def get_value(hand:str):
+  def get_value(cards:str):
     total = 0
     has_aces = False
-    for face in hand:
+    for face in cards:
       card_value = Counter.value_dict[face]
       if card_value == 1:
         has_aces = True
@@ -383,32 +383,32 @@ class Counter(IPlayer):
     return Counter.upcard_index[face]
 
   @staticmethod
-  def handsort(hand:str) -> str:
+  def handsort(cards:str) -> str:
     'sort a hand so that the low cards come first'
-    fs = list(hand)
+    fs = list(cards)
     fs.sort(key=Counter.get_index)
     return ''.join(fs)
   
   @staticmethod
-  def _want_insurance(true_count, hand, upcard) -> bool:
-    threshold = Counter.insurance_table[hand]
+  def _want_insurance(true_count, cards, upcard) -> bool:
+    threshold = Counter.insurance_table[cards]
     return true_count >= threshold
 
   @staticmethod
-  def _want_surrender(true_count, hand, upcard):
-    return Counter._want(Counter.surrender_table, true_count, hand, upcard)
+  def _want_surrender(true_count, cards, upcard):
+    return Counter._want(Counter.surrender_table, true_count, cards, upcard)
 
   @staticmethod
-  def _want_split(true_count, hand, upcard):
-    return Counter._want(Counter.split_table, true_count, hand, upcard)
+  def _want_split(true_count, cards, upcard):
+    return Counter._want(Counter.split_table, true_count, cards, upcard)
 
   @staticmethod
-  def _want_double(true_count, hand, upcard):
-    return Counter._want(Counter.double_table, true_count, hand, upcard)
+  def _want_double(true_count, cards, upcard):
+    return Counter._want(Counter.double_table, true_count, cards, upcard)
 
   @staticmethod
-  def _want_stand(true_count, hand, upcard):
-    value, soft = Counter.get_value(hand)
+  def _want_stand(true_count, cards, upcard):
+    value, soft = Counter.get_value(cards)
     if soft:
       table = Counter.soft_stand_table
     else:
@@ -421,16 +421,25 @@ class Counter(IPlayer):
         return False
 
   @staticmethod
-  def _want(table, true_count, hand, upcard):
+  def _want(table, true_count, cards, upcard):
     index = Counter.upcard_index[upcard]
-    threshold = table[hand][index]
+    threshold = table[cards][index]
     return true_count >= threshold
 
 class Dealer:
   def __init__(self, decks_in_shoe=6, decks_cut=1.5, seed=0):
     self._decks_in_shoe = decks_in_shoe
     self._decks_cut = decks_cut
+    self._cut_card_count = int(52*(decks_cut))
     self._seed = 0
+    self._players = set()
+    self._shoe = None
+
+  def add_player(self, player):
+    self._players.add(player)
+
+  def cut_card_seen(self) -> bool:
+    return self._cut_card_count > len(self._shoe)
 
   def decks_in_shoe(self) -> float:
     return float(self._decks_in_shoe)
@@ -451,17 +460,73 @@ class Dealer:
     suit = '23456789XXXXA'
     return list(suit * decks_in_shoe)
 
+class Hand:
+  def __init__(self):
+    self._cards = ''
+    self._bet = 0.0
+
+  def set_cards(self, cards):
+    self._cards = cards
+
+  def get_cards(self):
+    return self._cards
+
+  def set_bet(self, bet):
+    self._bet = bet
+
+  def get_bet(self):
+    return self._bet
+
+class Place:
+  def __init__(self):
+    self._player = None
+    self._hands = []
+
+  def set_player(self, player):
+    self._player = player
+  def get_player(self):
+    return self._player
+  def set_hands(self, hands):
+    self._hands = hands
+  def get_hands(self):
+    return self._hands
+
 def test2():
+  card_number = 0
+  place = Place()
+  places = [place]
   dealer = Dealer()
   player = Counter()
   player.set_minimum_bet(100.0)
   player.set_maximum_bet(1000.0)
   player.set_unit(100.0)
   player.set_decks_in_shoe(dealer.decks_in_shoe())
+  place.set_player(player)
   dealer.shuffle()
   dealer.burn_card()
+  card_number += 1
+
+  dealer.add_player(player)
+  while not dealer.cut_card_seen():
+    # each occupied place gets a single hand
+    # each place must have a bet attached
+    for place in places:
+      hand = Hand()
+      hand.set_bet(place.get_player().get_bet())
+      place.set_hands([hand])
+    for place in places:
+      for hand in place.get_hands():
+        card = dealer.deal_card()
+        for player in dealer._players:
+          player.show_card(card)
+        hand.set_cards(hand.get_cards() + card)
+    down_card = dealer.deal_card()
+
+
+    break
   
-  wager = player.get_wager()
+  print("bankrole", player._bankrole)
+  wager = player.get_bet()
   print("player bets", wager)
 
   card1 = dealer.deal_card()
@@ -475,34 +540,34 @@ def test2():
   up_card = dealer.deal_card()
   player.show_card(up_card)
 
-  dealer_hand = ''.join([hole_card, up_card])
+  dealer_cards = ''.join([hole_card, up_card])
   
-  hand = ''.join([card1, card2])
+  player_cards = ''.join([card1, card2])
   print('up_card:', up_card)
-  print('hand:', hand)
+  print('"player cards":', player_cards)
   if up_card == 'A':
-    if player.accepts_insurance(hand, up_card):
+    if player.accepts_insurance(player_cards, up_card):
       print('player accepts insurance')
       # collect insurance
     else:
       print('player declines insurance')
 
   if up_card == 'X' or up_card == 'A':
-    if is_blackjack(dealer_hand):
+    if is_blackjack(dealer_cards):
       print("dealer has a blackjack")
     else:
       print("dealer does not have a blacjack")
 
-  if hand_can_be_split(hand):
+  if hand_can_be_split(player_cards):
     print("hand may be split")
-    if player.accepts_split(hand, up_card):
+    if player.accepts_split(player_cards, up_card):
       print("player accepts split")
     else:
       print("player declines split")
   else:
     print("hand cannot be split")
 
-  if player.accepts_double(hand, up_card):
+  if player.accepts_double(player_cards, up_card):
     print("player accepts double")
   else:
     print("player declines double")
@@ -512,13 +577,14 @@ def test2():
     card = dealer.deal_card()
     print(card, "is dealt")
     player.show_card(card)
-    hand += card
-    if is_bust(hand) or player.accepts_stand(hand, up_card):
+    player_cards += card
+    if is_bust(player_cards) or player.accepts_stand(player_cards, up_card):
       break
-  if is_bust(hand):
-    print("hand busts with", hand)
+  if is_bust(player_cards):
+    print("hand busts with", player_cards)
   else:
-    print("player stands on", hand)
+    print("player stands on", player_cards)
+  print("bankrole", player._bankrole)
 
 def test1():
   #       23456789XJQKA
