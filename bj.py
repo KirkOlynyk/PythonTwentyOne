@@ -501,11 +501,13 @@ def test2():
   player.set_maximum_bet(1000.0)
   player.set_unit(100.0)
   player.set_decks_in_shoe(dealer.decks_in_shoe())
+  # have the player sit down in a place at the table
   place.set_player(player)
   dealer.shuffle()
   dealer.burn_card()
   card_number += 1
 
+  # inform the dealer of a new player at the table
   dealer.add_player(player)
   while not dealer.cut_card_seen():
     # each occupied place gets a single hand
