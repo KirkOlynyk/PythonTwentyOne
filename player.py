@@ -26,7 +26,7 @@ class Player(abc.ABC):
   def show_card(self, card : str) -> None:
     pass
   @abc.abstractclassmethod
-  def set_decks_in_shoe(self, decks_in_shoe : int) -> None:
+  def show_decks_in_shoe(self, decks_in_shoe : int) -> None:
     pass
   @abc.abstractclassmethod
   def get_bet(self) -> float:
@@ -39,4 +39,7 @@ class Player(abc.ABC):
     pass
   @abc.abstractclassmethod
   def set_maximum_bet(self, amount:float) -> None:
+    pass
+  @abc.abstractclassmethod
+  def place_insurance_bet(self, amount:float) -> None:
     pass
