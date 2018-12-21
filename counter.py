@@ -156,6 +156,8 @@ if __name__ == '__main__':
   print("counter bets", bet)
   print("bankrole", counter._bankrole)
   cards = 'A5'
+  value, soft = hand_value(cards)
+  print(value, soft)
   hand = counter._handsort(cards)
   print("cards", cards)
   print('hand', hand)
