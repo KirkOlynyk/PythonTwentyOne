@@ -477,6 +477,9 @@ class Hand:
   def get_bet(self):
     return self._bet
 
+  def add_card(self, card):
+    self._cards += card
+
 class Place:
   def __init__(self):
     self._player = None
@@ -501,13 +504,11 @@ def test2():
   player.set_maximum_bet(1000.0)
   player.set_unit(100.0)
   player.set_decks_in_shoe(dealer.decks_in_shoe())
-  # have the player sit down in a place at the table
   place.set_player(player)
   dealer.shuffle()
   dealer.burn_card()
   card_number += 1
 
-  # inform the dealer of a new player at the table
   dealer.add_player(player)
   while not dealer.cut_card_seen():
     # each occupied place gets a single hand
@@ -517,11 +518,13 @@ def test2():
       hand.set_bet(place.get_player().get_bet())
       place.set_hands([hand])
     for place in places:
-      for hand in place.get_hands():
-        card = dealer.deal_card()
-        for player in dealer._players:
-          player.show_card(card)
-        hand.set_cards(hand.get_cards() + card)
+      hands = place.get_hands()
+      assert len(hands) == 1
+      hand = hands[0]
+      card = dealer.deal_card()
+      for player in dealer._players:
+        player.show_card(card)
+      hand.add_card(card)
     down_card = dealer.deal_card()
 
 

@@ -25,6 +25,7 @@ class Counter(Player):
     self._maximum_bet = self._tables['maximum_bet']
     self._count_table = self._tables['counts']
     self._value_dict = self._tables['value_dict']
+    self._upcard_index = self._tables['upcard_index']
 
   def receive_payoff(self, amount : float) -> None:
     self._bankrole += amount
@@ -74,15 +75,15 @@ class Counter(Player):
     else:
       return total, False
 
-  @staticmethod
-  def get_index(face:str) -> int:
-    return Counter.upcard_index[face]
+  def get_index(self, card:str) -> int:
+    return self._upcard_index[card]
 
-  @staticmethod
-  def handsort(cards:str) -> str:
+  def handsort(self, cards:str) -> str:
     'sort a hand so that the low cards come first'
     fs = list(cards)
-    fs.sort(key=Counter.get_index)
+    def keyfun(card):
+      return self.get_index(card)
+    fs.sort(key=keyfun)
     return ''.join(fs)
   
   @staticmethod
