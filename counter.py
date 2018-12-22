@@ -147,7 +147,8 @@ class Counter(Player):
     hand.sort(key=keyfun)
     return ''.join(hand)
 
-if __name__ == '__main__':
+def test0() -> None:
+  'Just at test'
   counter = Counter('counter.json')
   counter.show_decks_in_shoe(6)
   counter.set_minimum_bet(100.0)
@@ -155,9 +156,14 @@ if __name__ == '__main__':
   bet = counter.get_bet()
   print("counter bets", bet)
   print("bankrole", counter._bankrole)
-  cards = 'A5'
-  value, soft = hand_value(cards)
-  print(value, soft)
+  counter.show_card('A')
+  counter.show_card('X')
+  counter.show_card('X')
+  print("true count:", counter._true_count)
+  cards = 'XX'
   hand = counter._handsort(cards)
   print("cards", cards)
   print('hand', hand)
+
+if __name__ == '__main__':
+  test0()
