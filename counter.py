@@ -128,7 +128,8 @@ class Counter(Player):
     else:
       table = self._hard_stand
     try:
-      decision = table[str(value)][CARD_INDEXES[upcard]]
+      updex = self._upcard_index[upcard]
+      decision = table[str(value)][updex]
       return self._true_count >= decision
     except KeyError:
       return False
