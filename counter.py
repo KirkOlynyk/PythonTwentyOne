@@ -7,7 +7,10 @@ Defines the Counter class for a blackjack counter
 import json
 from math import floor
 from player import Player
-from rules import CARDS_PER_DECK, CARD_VALUES, hand_value, CARD_INDEXES
+from rules import CARDS_PER_DECK, \
+                  CARD_VALUES,    \
+                  hand_value,     \
+                  CARD_INDEXES
 
 class Counter(Player):
   '''
@@ -50,16 +53,19 @@ class Counter(Player):
 
   def receive_payoff(self, amount : float) -> None:
     '''
+    Implements the Player interface function.
+
     The player has won the wager. This is the
     return of the win along with the original wager
     '''
     self._bankrole += amount
 
-  def get_bet(self) -> float:
+  def get_bet_amount(self) -> float:
     '''
-    The hand is started and a wager must be made. The player
-    calculates the bet and removes it from his bankrole
-    and places it on the table.
+    Implements the Player interface function.
+    Get the desire bet amount. Do not take
+    any money from the bankrole, that is
+    done with make_bet
     '''
     scale = self._true_count + self._true_adjust
     wager = self._unit * floor(scale + 0.5)
@@ -67,6 +73,12 @@ class Counter(Player):
       wager = self._minimum_bet
     elif wager > self._maximum_bet:
       wager = self._maximum_bet
+    return wager
+
+  def make_bet(self, wager:float) -> None:
+    '''
+    Required by the Player interface
+    '''
     self._bankrole -= wager
     return wager
 
@@ -75,13 +87,15 @@ class Counter(Player):
     try:
       hand = self._handsort(cards)
       updex = self._upcard_index[upcard]
-      critical_true = table[hand][updex]
-      return self._true_count >= critical_true
+      decision = table[hand][updex]
+      return self._true_count >= decision
     except KeyError:
       return False
 
   def accepts_insurance(self, cards : str, upcard : str) -> bool:
     '''
+    Implements the Player interface function.
+    
     The player is asked by the dealer if the hand should be
     insured. If then the dealer will place a side bet of 
     one half of the current bet on the hand
@@ -95,23 +109,27 @@ class Counter(Player):
       return False
     
   def accepts_surrender(self, cards:str, upcard:str) -> bool:
+    'Required by the Player interface'
     return self._accepts(cards, upcard, self._insurance)
 
   def accepts_split(self, cards:str, upcard:str) -> bool:
+    'Required by the Player interface'
     return self._accepts(cards, upcard, self._split)
 
   def accepts_double(self, cards:str, upcard:str) -> bool:
+    'Required by the Player interface'
     return self._accepts(cards, upcard, self._double)
 
   def accepts_stand(self, cards:str, upcard:str) -> bool:
+    'Required by the Player interface'
     value, soft = hand_value(cards)
     if soft:
       table = self._soft_stand
     else:
       table = self._hard_stand
     try:
-      critical_true = table[str(value)]
-      return self._true_count >= critical_true
+      decision = table[str(value)][CARD_INDEXES[upcard]]
+      return self._true_count >= decision
     except KeyError:
       return False
 
@@ -149,21 +167,56 @@ class Counter(Player):
 
 def test0() -> None:
   'Just at test'
+  # Set everything done
   counter = Counter('counter.json')
   counter.show_decks_in_shoe(6)
   counter.set_minimum_bet(100.0)
   counter.set_maximum_bet(3000.0)
-  bet = counter.get_bet()
-  print("counter bets", bet)
-  print("bankrole", counter._bankrole)
-  counter.show_card('A')
-  counter.show_card('X')
-  counter.show_card('X')
-  print("true count:", counter._true_count)
+
+  print('counter-bankrole:', counter._bankrole)
+
+  #play a round
+  # deal the cards
+  counter.show_card('A')                    # up-card
+  counter.show_card('X')                    # player card
+  counter.show_card('X')                    # player card
+  
+  # what is the true?
+  print("true-count: {0:.1f}".format(counter._true_count))
+  bet = counter.get_bet_amount()
+  counter.make_bet(bet)
+  print("counter-bet:", bet)
+  print("couter-bankrole:", counter._bankrole)
+
+  # the player gets two tens
   cards = 'XX'
+  # the dealer has an up-card
+  up_card = 'A'
+  # a hand is a values sorted string of cards
   hand = counter._handsort(cards)
-  print("cards", cards)
-  print('hand', hand)
+  # print the original string of cards and then the sorted cards of the hand
+  print('counter-hand:', hand)
+  print('up-card:', up_card)
+
+  if counter.accepts_insurance(cards, up_card):
+    print("counter accepts insurance")
+  else:
+    print("counter declines insurance")
+
+  if counter.accepts_split(cards, up_card):
+    print("counter accepts split")
+  else:
+    print("counter declines split")
+
+  if counter.accepts_double(cards, up_card):
+    print("player accepts double")
+  else:
+    print("player declines double")
+
+  if counter.accepts_stand(cards, up_card):
+    print("player accepts stand")
+  else:
+    print("player declines stand")
 
 if __name__ == '__main__':
   test0()

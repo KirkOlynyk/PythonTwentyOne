@@ -29,7 +29,8 @@ class Player(abc.ABC):
   def show_decks_in_shoe(self, decks_in_shoe : int) -> None:
     pass
   @abc.abstractclassmethod
-  def get_bet(self) -> float:
+  def get_bet_amount(self) -> float:
+    'Get the intendend amount do not take it from the player yet'
     pass
   @abc.abstractclassmethod
   def receive_payoff(self, amount) -> None:
@@ -41,5 +42,5 @@ class Player(abc.ABC):
   def set_maximum_bet(self, amount:float) -> None:
     pass
   @abc.abstractclassmethod
-  def place_insurance_bet(self, amount:float) -> None:
+  def make_bet(self, amount:float) -> None:
     pass
