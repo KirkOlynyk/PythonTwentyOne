@@ -20,6 +20,8 @@ CARD_INDEXES = {
   "X" : 8, "A" : 9 
 }
 
+CARD_FACES = "23456789XXXXA"
+
 HAND_VALUE = Tuple[int, bool]
 
 def hand_value(cards:str) -> HAND_VALUE:
