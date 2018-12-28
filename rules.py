@@ -45,3 +45,11 @@ def hand_value(cards:str) -> HAND_VALUE:
     return total + 10, True
   else:
     return total, False
+
+def is_blackjack(cards) -> bool:
+  if len(cards) == 2:
+    if cards[0] == 'A' and cards[1] == 'X':
+      return True
+    elif cards[0] == 'X' and cards[1] == 'A':
+      return True
+  return False

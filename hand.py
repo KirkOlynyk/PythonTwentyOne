@@ -7,6 +7,9 @@ class Hand:
 Each hand contains a set of cards and a wager.
   '''
   def __init__(self):
+    self.reset()
+
+  def reset(self):
     self.__cards = ''
     self.__bet = 0.0
     self.__insurance_bet = 0.0
@@ -34,3 +37,4 @@ Each hand contains a set of cards and a wager.
   @insurance_bet.setter
   def insurance_bet(self, x):
     self.__insurance_bet = x
+

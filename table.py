@@ -2,10 +2,11 @@
 table.py
 '''
 
-from rules import CARDS_PER_DECK
+from rules import CARDS_PER_DECK, is_blackjack
 from shoe import Shoe
 from counter import Counter
 from place import Place
+from hand import Hand
 
 class Table:
   '''
@@ -131,6 +132,43 @@ class Table:
       if place.player != None:
         yield place
 
+  def players_take_insurance(self):
+    for place in self.occupied_places():
+      assert len(place.hands) == 1
+      player = place.player
+      hand = place.hands[0]
+      cards = hand.cards
+      if player.accepts_insurance(cards, self.upcard):
+        hand.insurance_bet = 0.5 * hand.bet
+        player.make_bet(hand.insurance_bet)
+
+  def dealer_blackjack_ace_up(self):
+    assert self.upcard == 'A'
+    print('dealer has a blackjack ace up')
+    for place in self.occupied_places():
+      assert len(place.hands) == 1
+      hand = place.hands[0]
+      player = place.player
+      if hand.insurance_bet != 0.0:
+        player.receive_payoff(2 * hand.insurance_bet)
+      if hand.is_blackjack():
+        player.receive_payoff(hand.bet) # push
+
+  def dealer_blackjack_ten_up(self):
+    assert self.upcard == 'X'
+    print('dealer has a blackjack ten up')
+    for place in self.occupied_places():
+      assert len(place.hands) == 1
+      player = place.player
+      hand = place.hands[0]
+      assert hand.insurance_bet == 0.0
+      if hand.is_blackjack():
+        player.receive_payoff(hand.bet) # push
+
+  def reset_places(self):
+    for place in self.occupied_places():
+      place.hands = [Hand()]
+
   def play_round(self):
     self.hand = ''
     self.make_bets()
@@ -140,32 +178,15 @@ class Table:
     self.deal_places()
     self.deal_up_card()
     if self.upcard == 'A':
-      for place in self.occupied_places():
-        assert len(place.hands) == 1
-        player = place.player
-        hand = place.hands[0]
-        cards = hand.cards
-        if player.accepts_insurance(cards, self.upcard):
-          hand.insurance_bet = 0.5 * hand.bet
-          player.make_bet(hand.insurance_bet)
-
-      # offer insurance then check for blackjack
-      # if a blackjack does not occur then play on
-      # otherwise process blackjack and end the round
+      self.players_take_insurance()
       if self.downcard == 'X':
-        print('dealer has a blackjack')
-        # pay off insurance bets
-        # finish up all places
+        self.dealer_blackjack_ace_up()
+        self.reset_places()
         return
-      else:
-        # collect insurance bets
-        pass
     elif self.upcard == 'X':
-      # if dealer has a blackjack then process the
-      # blackack and end the round
       if self.downcard == 'A':
-        print('dealer has a blackjack')
-        # finish up all places
+        self.dealer_blackjack_ten_up()
+        self.reset_places()
         return
     self.play_each_place()
 
