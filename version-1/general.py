@@ -1,3 +1,9 @@
+'''
+general.py
+
+Common methods and types
+'''
+
 import random
 from typing import List, Tuple, Iterable, Optional
 
