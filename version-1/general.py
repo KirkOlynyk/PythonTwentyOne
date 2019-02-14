@@ -5,14 +5,14 @@ Common methods and types
 '''
 
 import random
-from typing import List, Tuple, Iterable, Optional
+from typing import List, Tuple, Optional
 
 CARD = int
 FACEVALUE = int
 HAND = List[CARD]
 SOFTNESS = bool
 BJVALUE = Tuple[int, SOFTNESS]
-SHOE = Iterable[CARD]
+SHOE = List[CARD]
 
 # pylint: disable=R0903
 class General:
@@ -21,6 +21,14 @@ class General:
   face_values = [2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10, 11]
   count_values = [+1, +1, +1, +1, +1, 0, 0, 0, -1, -1, -1, -1, -1]
   suit_symbols = 'HDCS'
+
+  @staticmethod
+  def hand_to_face_string(hand: HAND) -> str:
+    '''
+    Represent a HAND as a string
+    '''
+    faces = [General.face_index(card) for card in hand]
+    return ''.join([General.get_face_symbol(face) for face in faces])
 
   @staticmethod
   def face_index(card) -> int:

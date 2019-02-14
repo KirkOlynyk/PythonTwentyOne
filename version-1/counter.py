@@ -18,7 +18,7 @@ class Counter(Player):
   _cards_to_decks = 0.0192307692307692 # = 1 / 52
   _key_alphabet = '23456789XXXXA'
   #                 2  3  4  5  6  7  8  9  X  J  Q  K  A
-  _card_to_index = [0, 1, 2, 3, 4, 5, 6, 7, 8, 8, 8, 8, 9]
+  _face_to_index = [0, 1, 2, 3, 4, 5, 6, 7, 8, 8, 8, 8, 9]
 
   def __init__(self, file_path: str) -> None:
     '''
@@ -30,9 +30,19 @@ class Counter(Player):
     self.minimum_bet = 0.0
     self.maximum_bet = 0.0
     self.bankrole = 0.0
-    self.ddict = Counter._get_json_dict(file_path) # decision numbers
-    self.unit = self.ddict['unit']
-    self.true_adjust = self.ddict['true_adjust']
+    self.ddict = Counter._get_json_dict(file_path)  # decision numbers
+    self.unit = self.ddict['unit']                  # bet quantizer
+    self.true_adjust = self.ddict['true_adjust']    # true adjustor for betting
+    self.get_shoe_len = lambda: 0                   # function for shoe length
+
+  @staticmethod
+  def _card_to_index(card: CARD) -> int:
+    '''
+    returns index into decision tables. The the
+    return value must be in the range 0 .. 9
+    '''
+    face = General.face_index(card)
+    return Counter._face_to_index[face]
 
   @staticmethod
   def _card_to_character(card: CARD) -> str:
@@ -78,7 +88,7 @@ class Counter(Player):
       alist = table[key]
     except KeyError:
       return False
-    index = Counter._card_to_index[upcard]
+    index = Counter._card_to_index(upcard)
     crit = alist[index]
     return true_value >= crit
 
@@ -86,15 +96,23 @@ class Counter(Player):
     '''
     Determine if the counter wants the request action
     '''
-    true_count = self._get_true()
+    true_count = self.get_true()
     return Counter._permit(hand, upcard, true_count, table)
+
+  def set_get_shoe_len(self, get_shoe_len) -> None:
+    '''
+    Set function to get the number of undealt cards
+    remaining in the shoe
+    '''
+    self.get_shoe_len = get_shoe_len
 
   def requests_insurance(self, hand: HAND, upcard: CARD) -> bool:
     '''
     The dealer is asking the player if the hand should be insured
     '''
     try:
-      return self._get_true() >= self.ddict['insurance']
+      index = Counter._card_to_index(upcard)
+      return self.get_true() >= self.ddict['insurance'][index]
     except KeyError:
       return False
 
@@ -135,8 +153,8 @@ class Counter(Player):
       table_key = 'hard_stand'
     table = self.ddict[table_key]
     key = str(hand_value)
-    true_count = self._get_true()
-    index = self._card_to_index[upcard]
+    true_count = self.get_true()
+    index = self._card_to_index(upcard)
     try:
       alist = table[key]
       critical_true = alist[index]
@@ -148,7 +166,6 @@ class Counter(Player):
     '''
     The newly dealt card is shown to the player
     '''
-    self.n_cards_dealt += 1
     self.count += General.get_count_value(card)
 
   def observe_number_of_decks_in_shoe(self, n_decks: int) -> None:
@@ -162,14 +179,13 @@ class Counter(Player):
     '''
     The player announces the bet amount for this round
     '''
-    scale = self._get_true() + self.true_adjust
+    scale = self.get_true() + self.true_adjust
     bet = self.unit * floor(scale * self.unit + 0.5)
     if bet < self.minimum_bet:
       return self.minimum_bet
-    elif bet > self.maximum_bet:
+    if bet > self.maximum_bet:
       return self.maximum_bet
-    else:
-      return bet
+    return bet
 
   def receive_payoff(self, amount: float) -> None:
     '''
@@ -192,14 +208,12 @@ class Counter(Player):
     '''
     self.maximum_bet = self.unit * ceil(amount / self.unit)
 
-  def _get_true(self) -> float:
+  def get_true(self) -> float:
     '''
     Get the current value of the 'true' count
     '''
-    decks_remaining = float(self.n_decks) \
-                             - self._cards_to_decks * self.n_cards_dealt
-    true = self.count / decks_remaining
-    return true
+    decks_remaining = self.get_shoe_len() * self._cards_to_decks
+    return self.count / decks_remaining
 
   def make_bet(self, amount: float) -> None:
     '''
@@ -209,23 +223,57 @@ class Counter(Player):
     '''
     self.bankrole -= amount
 
-  def unobservable_card_dealt(self) -> None:
-    '''
-    Inform the player that a card as been dealt and will not
-    be made visible
-    '''
-    self.n_cards_dealt += 1
-
   @staticmethod
   def test1(strategy_file_path) -> None:
     '''
     For testing purposes
     '''
+    n_decks = 6
+
+    shoe = General.get_shoe(n_decks)
+
+    def get_shoe_len() -> int:
+      'returns the length of the shoe'
+      return len(shoe)
+
     counter = Counter(strategy_file_path)
-    # pylint: disable=W0212
-    ans = counter._permit([12, 2], 11, -2.0, counter.ddict['surrender'])
-    # pylint: enable=W0212
-    print(ans)
+    counter.set_get_shoe_len(get_shoe_len)
+
+    # burn a card
+    _ = shoe.pop()
+
+
+    for _ in range(20):
+      # player is dealt the first card
+      card = shoe.pop()
+      counter.observe_card(card)
+      player_hand = [card]
+
+      # dealer gets the second card face down
+      dealer_hand = [shoe.pop()]
+
+      # player gets the third card
+      card = shoe.pop()
+      counter.observe_card(card)
+      player_hand.append(card)
+
+      # dealer gets the last card face up
+      upcard = shoe.pop()
+      counter.observe_card(upcard)
+      dealer_hand.append(upcard)
+
+      print()
+      print('dealer hand: "{0}"'.format(General.hand_to_face_string(dealer_hand)))
+      print('upcard: "{0}"'.format(General.get_face_symbol(upcard)))
+      print('player hand:', General.hand_to_face_string(player_hand))
+      print('true: {0:.1f}'.format(counter.get_true()))
+
+      if counter.requests_insurance(player_hand, upcard):
+        print('player requests insurance')
+      else:
+        print('player declines insurance')
+
+
 
 # pylint: enable=R0902
 

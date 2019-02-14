@@ -5,10 +5,17 @@ Defines the interface for a blackjack player.
 '''
 
 import abc
-from general import CARD, HAND
+from general import CARD, HAND, SHOE
 
 class Player(abc.ABC):
   'Player interface definition'
+
+  @abc.abstractclassmethod
+  def set_get_shoe_len(cls, get_shoe_len) -> None:
+    '''
+    Give the player a function to get the number of
+    undealt cards in the shoe
+    '''
 
   @abc.abstractclassmethod
   def requests_insurance(cls, hand: HAND, upcard: CARD) -> bool:
@@ -86,11 +93,4 @@ class Player(abc.ABC):
     Money is taken from the Player and placed on a hand at the table.
     The system determines the bet amount and removes it from
     the player's bankrole.
-    '''
-
-  @abc.abstractclassmethod
-  def unobservable_card_dealt(cls) -> None:
-    '''
-    Inform the player that a card as been dealt and will not
-    be made visible
     '''
