@@ -31,6 +31,11 @@ class General:
     return ''.join([General.get_face_symbol(face) for face in faces])
 
   @staticmethod
+  def is_blackjack(hand: HAND) -> bool:
+    'returns True if the hand is a blackjack'
+    return len(hand) == 2 and General.bj_value(hand) == (21, True)
+
+  @staticmethod
   def face_index(card) -> int:
     'returns the face index of a card'
     return card & 0xF

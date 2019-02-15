@@ -5,7 +5,7 @@ Defines the interface for a blackjack player.
 '''
 
 import abc
-from general import CARD, HAND, SHOE
+from general import CARD, HAND
 
 class Player(abc.ABC):
   'Player interface definition'
