@@ -174,10 +174,23 @@ def run(n_shoes, start, stop):
 
 def main():
   'main entry point: args = n_shoes start stop'
-  n_shoes = int(sys.argv[1])
-  start = float(sys.argv[2])
-  stop = float(sys.argv[3]) + .1
-  run(n_shoes, start, stop)
+  try:
+    n_shoes = int(sys.argv[1])
+    start = float(sys.argv[2])
+    stop = float(sys.argv[3]) + .1
+    run(n_shoes, start, stop)
+  except Exception: # pylint: disable=broad-except
+    print()
+    print("Analyze insurance bets")
+    print()
+    print("  Syntax:")
+    print()
+    print("    > python insurance.py n_shoes start stop")
+    print()
+    print("    eg.")
+    print()
+    print("    > python insurance.py 10000 -5.0 +5.1")
+    print()
 
 if __name__ == '__main__':
   main()
