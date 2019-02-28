@@ -71,33 +71,22 @@ class Shoe:
 
 def insurance(shoe, count, recorder):
   '''
-  Deals four cards from the shoe which corresponds to two to the player
-  and two to the dealer. The count is initially adjusted for three of
-  the cards. The fourth card corresponds to the dealer's down card
-  so the player does not see it and thus does not initally affect the
-  count. The true count is calcualted after the three cards has
-  been seen. If if the dealer's upcard, which is part of the visible
-  three, is an ace then we have the possibility of a dealer blackjack.
-  In this case, the true count is recorded. The the uncounted card
-  , the downcard, is revealed to see if it has a blackjack value
-  of 10 and thus the dealer has a blackjack. If the dealer has
-  a blackjack then a loss of 1 is recorded otherwise a win of 2
-  is recorded simulating the result of an insurance bet being made.
-  Finally, the count is adjusted for the downcard. The true count and
-  insurance bet result are recorded by calling the recorder function.
-  The updated count is returned to the caller.
+  Deal two cards to the dealer. Update the count for the up-card
+  then calculate the true. If the dealer has a blackjack then
+  the win is 2 else the win is -1. Record the true an win. Update
+  the count for the down-card
   '''
-  cards = [shoe.deal(), shoe.deal(), shoe.deal(), shoe.deal()]
-  counts = [card.count for card in  cards]
-  count += sum(counts[:3])
-  if cards[2].is_ace():
+  up_card = shoe.deal()
+  down_card = shoe.deal()
+  count += up_card.count
+  if up_card.is_ace():
     etrue = shoe.get_true(count)
-    if cards[3].is_value_equal_10():
-      win = 2 # dealer blackjack, insurance bet pays off 2:1
+    if down_card.is_value_equal_10():
+      win = 2
     else:
-      win = -1 # no dealer blackjack, insurace bet is lost
+      win = -1
     recorder((etrue, win))
-  count += counts[3]
+  count += down_card.count
   return count
 
 def play_shoe(recorder, n_decks=6):
@@ -152,6 +141,7 @@ def analyze_results(results, start, stop):
   for tmin in tmins:
     analyze_true(results, tmin, my_recorder)
 
+  # plot the expected win agains the minimum true values
   plt.scatter(tmin_s, win_s)
   plt.grid(True)
   plt.xlabel("minimum true")
