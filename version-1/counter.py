@@ -45,6 +45,14 @@ class Counter(Player):
     return Counter._face_to_index[face]
 
   @staticmethod
+  def _card_to_character(card: CARD) -> str:
+    '''
+    Convert a card to a key character to be used by
+    _hand_to_key
+    '''
+    return Counter._key_alphabet[card]
+
+  @staticmethod
   def _hand_to_key(hand: HAND) -> str:
     '''
     Converts a hand into a sorted string key the mappings in self.ddict.
@@ -53,12 +61,9 @@ class Counter(Player):
     always comes last, etc. For example the hand [12, 10]
     corresponds to 'AQ' will result in the key 'XA'
     '''
-    # make a list of face indices in the range 0..12
-    a_list = [General.face_index(card) for card in hand]
-    # sort for low to high
-    a_list.sort()
-    # change back into a string where X represents a 10 value
-    b_list = [Counter._key_alphabet[x] for x in a_list]
+    a_list = hand[:]  # make a local copy so the sort does not affect the original
+    a_list.sort()     # sort from low to high
+    b_list = [Counter._card_to_character(x) for x in a_list]
     return "".join(b_list)
 
   @staticmethod
@@ -103,18 +108,13 @@ class Counter(Player):
 
   def requests_insurance(self, hand: HAND, upcard: CARD) -> bool:
     '''
-    The dealer is asking the player if the hand should be insurred.
-    This is controled by a differet table so you cannot use
-    the _request_any method.
+    The dealer is asking the player if the hand should be insured
     '''
-    return self.get_true() >= 5.0
-    # try:
-    #   key = Counter._hand_to_key(hand)
-    #   adict = self.ddict['insurance']
-    #   crit = adict[key]
-    #   return self.get_true() >= crit
-    # except KeyError:
-    #   return False
+    try:
+      index = Counter._card_to_index(upcard)
+      return self.get_true() >= self.ddict['insurance'][index]
+    except KeyError:
+      return False
 
   def _requests_any(self, hand: HAND, upcard: CARD, table_key: str) -> bool:
     '''
@@ -230,53 +230,52 @@ class Counter(Player):
     '''
     n_decks = 6
 
+    shoe = General.get_shoe(n_decks)
 
     def get_shoe_len() -> int:
       'returns the length of the shoe'
-      return 52 * n_decks
+      return len(shoe)
 
     counter = Counter(strategy_file_path)
     counter.set_get_shoe_len(get_shoe_len)
-    counter.set_minimum_bet(100.0)
-    counter.set_maximum_bet(1000.0)
 
-    n_win = 0
-    n_loss = 0
-    for _ in range(100000):
-      counter.count = 0
-      shoe = General.get_shoe(n_decks)
-      # burn a card
-      _ = shoe.pop()
+    # burn a card
+    _ = shoe.pop()
 
-      while len(shoe) > 78:
-        # player is dealt the first card
-        card = shoe.pop()
-        counter.observe_card(card)
-        player_hand = [card]
 
-        # dealer gets the second card face down
-        dealer_hand = [shoe.pop()]
+    for _ in range(20):
+      # player is dealt the first card
+      card = shoe.pop()
+      counter.observe_card(card)
+      player_hand = [card]
 
-        # player gets the third card
-        card = shoe.pop()
-        counter.observe_card(card)
-        player_hand.append(card)
+      # dealer gets the second card face down
+      dealer_hand = [shoe.pop()]
 
-        # dealer gets the last card face up
-        upcard = shoe.pop()
-        counter.observe_card(upcard)
-        dealer_hand.append(upcard)
+      # player gets the third card
+      card = shoe.pop()
+      counter.observe_card(card)
+      player_hand.append(card)
 
-        if General.get_face_symbol(upcard) == 'A':
-          if counter.requests_insurance(player_hand, upcard):
-            if General.is_blackjack(dealer_hand):
-              n_win += 1
-            else:
-              n_loss += 1
-          else:
-            pass
-    print("n_win:", n_win)
-    print("n_loss:", n_loss)
+      # dealer gets the last card face up
+      upcard = shoe.pop()
+      counter.observe_card(upcard)
+      dealer_hand.append(upcard)
+
+      print()
+      print('dealer hand: "{0}"'.format(General.hand_to_face_string(dealer_hand)))
+      print('upcard: "{0}"'.format(General.get_face_symbol(upcard)))
+      print('player hand:', General.hand_to_face_string(player_hand))
+      print('true: {0:.1f}'.format(counter.get_true()))
+
+      # if the up-card is an ace then see if the player requests
+      # insurance
+      if counter.requests_insurance(player_hand, upcard):
+        print('player requests insurance')
+      else:
+        print('player declines insurance')
+
+
 
 # pylint: enable=R0902
 
